@@ -30,12 +30,14 @@ u_int8_t  buf[BUFFER_SIZE];
 
 /* global variables */
 int debug = 0;
+int rate = 11025;	/* default sampling rate */
 FILE *wav_fp = NULL;
 
 /* prototypes */
 int read_wav_data(u_int8_t *, int, struct audio_info*);
 int wav_open(char *);
 void wav_close(void);
+void print_audio_info(struct audio_info *ai);
 void usage(void);
 
 int
@@ -51,10 +53,13 @@ main(int argc, char **argv)
 	extern char *optarg;
 	extern int optind, opterr;
 
-	while ((ch = getopt(argc, argv, "d")) != -1) {
+	while ((ch = getopt(argc, argv, "dr:")) != -1) {
 		switch (ch) {
 		case 'd':	/* debug flag */
 			debug = 1;
+			break;
+		case 'r':	/* sampling rate */
+			rate = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -87,8 +92,10 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+	if (debug) print_audio_info(&ai);
+
 	/* we assume Linear PCM, 11025Hz, 16bit, stereo */
-	ai.play.sample_rate =  11025;
+	ai.play.sample_rate =  rate;
 	ai.play.encoding = AUDIO_ENCODING_SLINEAR;
 	ai.play.channels = 2;	/* stereo */
 	ai.play.precision = 16;	/* 16 bit sampling */
@@ -99,6 +106,8 @@ main(int argc, char **argv)
 		perror("ioctl AUDIO_SETINFO");
 		return 1;
 	}
+
+	if (debug) print_audio_info(&ai);
 
 	/* bytes per sample */
 	bps = ai.play.channels * ai.play.precision / 8;
@@ -168,10 +177,30 @@ wav_close(void)
 }
 
 void
+print_audio_info(struct audio_info *ai) {
+
+	printf("audio_info:\n");
+	printf("\t.play.sample_rate = %d\n", ai->play.sample_rate);
+	printf("\t.play.channels = %d\n", ai->play.channels);
+	printf("\t.play.precision = %d\n", ai->play.precision);
+	printf("\t.play.bps = %d\n", ai->play.bps);
+	printf("\t.play.msb = %d\n", ai->play.msb);
+	printf("\t.play.encoding = %d\n", ai->play.encoding);
+	printf("\t.play.buffer_size = %d\n", ai->play.buffer_size);
+	printf("\t.play.block_size = %d\n", ai->play.block_size);
+	printf("\t.blocksize = %d\n", ai->blocksize);
+	printf("\t.hiwat = %d\n", ai->hiwat);
+	printf("\t.lowat = %d\n", ai->lowat);
+
+	return;
+}
+
+void
 usage(void)
 {
 	printf("Usage: %s [options] wavfile.wav\n", getprogname());
 	printf("\t-d	: debug flag\n");
+	printf("\t-r #	: sampling rate\n");
 	printf("\twavfile must be LE, 16bit, stereo\n");
 	exit(1);
 }
